@@ -68,11 +68,13 @@ int h(Node *current_status, Node *target) {
     for (int i = 0; i < 3; ++i) 
         for (int j = 0; j < 3; ++j) 
             for (int k = 0; k < 3; ++k) {
+                int num = current_status->status[i][j][k];
+                if (num == -1)
+                    continue;
                 map<int, Point>::iterator iter;
-                iter = target_position.find(current_status->status[i][j][k]);
-                Point p;
-                p = iter->second;
-                dist = abs(p.x-k) + abs(p.y-j) + abs(p.z-i);
+                iter = target_position.find(num);
+                Point p = iter->second;
+                dist += abs(p.x-i) + abs(p.y-j) + abs(p.z-k);
             }
     return dist;
 }
@@ -84,7 +86,7 @@ void copy_status(const Node *from, Node *to){
                 to->status[i][j][k] = from->status[i][j][k];
 }
 
-void move_blank(const Node *current_status, direction dire, Node *target) {
+void move_blank(const Node *current_status, direction dire, Node *target, direction lst_move) {
     Node *p;
     p = new Node();
 
@@ -99,7 +101,7 @@ void move_blank(const Node *current_status, direction dire, Node *target) {
     p->movement = dire;
     switch (dire){
         case DOWN:
-            if (y >= 2)
+            if (y >= 2 || lst_move == UP)
                 return;
             else {
                 if (p->status[z][y+1][x] == BARRIER)
@@ -110,7 +112,7 @@ void move_blank(const Node *current_status, direction dire, Node *target) {
             }
             break;
         case UP:
-            if (y <= 0)
+            if (y <= 0 || lst_move == DOWN)
                 return;
             else {
                 if (p->status[z][y-1][x] == BARRIER)
@@ -121,7 +123,7 @@ void move_blank(const Node *current_status, direction dire, Node *target) {
             }
             break;
         case LEFT:
-            if (x <= 0)
+            if (x <= 0 || lst_move == RIGHT)
                 return;
             else {
                 if (p->status[z][y][x-1] == BARRIER)
@@ -132,7 +134,7 @@ void move_blank(const Node *current_status, direction dire, Node *target) {
             }
             break;
         case RIGHT:
-            if (x >= 2)
+            if (x >= 2 || lst_move == LEFT)
                 return;
             else {
                 if (p->status[z][y][x+1] == BARRIER)
@@ -143,7 +145,7 @@ void move_blank(const Node *current_status, direction dire, Node *target) {
             }
             break;
         case FORWARD:
-            if (z <= 0)
+            if (z <= 0 || lst_move == BACK)
                 return;
             else {
                 if (p->status[z-1][y][x] == BARRIER)
@@ -154,7 +156,7 @@ void move_blank(const Node *current_status, direction dire, Node *target) {
             }
             break;
         case BACK:
-            if (z >= 2)
+            if (z >= 2 || lst_move == FORWARD)
                 return;
             else {
                 if (p->status[z+1][y][x] == BARRIER)
@@ -221,13 +223,14 @@ void A_star(Node *start, Node *target) {
     start->movement = NONE;
     OPEN.push(start);
     long int step = 0;
+    direction lst_move = NONE;
     // cout << start->g << start->h << start->f <<endl;
     while (!OPEN.empty()&&step < MAXSTEP) {
         Node *p;
         p = OPEN.top();
-        cout << "visit nodes = " << step++ << endl;
-        cout << "g = " << p->g << " h = " << p->h << " f = " << p->f <<endl;
-        cout << "blank x = " << p->blank.x << " blank y = " << p->blank.y << " blank z = " << p->blank.z <<endl;
+        // cout << "visit nodes = " << step++ << endl;
+        // cout << "g = " << p->g << " h = " << p->h << " f = " << p->f <<endl;
+        // cout << "blank x = " << p->blank.x << " blank y = " << p->blank.y << " blank z = " << p->blank.z <<endl;
         
         OPEN.pop();
         CLOSE.insert(pair<Node, int>(*p, p->f));
@@ -236,8 +239,10 @@ void A_star(Node *start, Node *target) {
             print_path(p);
             return;
         }
+        if (p)
+            lst_move = p->movement;
         for (int i = 0; i < 6; ++i)
-            move_blank(p, (direction)i, target);
+            move_blank(p, (direction)i, target, lst_move);
     }
     cout << "no solution!" << endl;
     return;
@@ -299,7 +304,12 @@ int main(int argc, char const *argv[]) {
     read_file2node(fname, target);
     find_blank(target);
     creat_position(target);
-    // A_star(begin, target);  
+    // map<int, Point>::iterator iter;
+    // for (iter = target_position.begin(); iter != target_position.end(); ++iter)
+    // {
+    //     cout<<"key " <<iter->first << " value:" <<iter->second.x<<iter->second.y<<iter->second.z <<endl;
+    // }
+    A_star(begin, target);  
     delete target;
     delete begin;
     return 0;

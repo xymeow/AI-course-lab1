@@ -79,7 +79,7 @@ void copy_status(const Node *from, Node *to){
                 to->status[i][j][k] = from->status[i][j][k];
 }
 
-void move_blank(const Node *current_status, direction dire, Node *target) {
+void move_blank(const Node *current_status, direction dire, Node *target, direction lst_move) {
     Node *p;
     p = new Node();
 
@@ -94,7 +94,7 @@ void move_blank(const Node *current_status, direction dire, Node *target) {
     p->movement = dire;
     switch (dire){
         case DOWN:
-            if (y >= 2)
+            if (y >= 2 || lst_move == UP)
                 return;
             else {
                 if (p->status[z][y+1][x] == BARRIER)
@@ -105,7 +105,7 @@ void move_blank(const Node *current_status, direction dire, Node *target) {
             }
             break;
         case UP:
-            if (y <= 0)
+            if (y <= 0 || lst_move == DOWN)
                 return;
             else {
                 if (p->status[z][y-1][x] == BARRIER)
@@ -116,7 +116,7 @@ void move_blank(const Node *current_status, direction dire, Node *target) {
             }
             break;
         case LEFT:
-            if (x <= 0)
+            if (x <= 0 || lst_move == RIGHT)
                 return;
             else {
                 if (p->status[z][y][x-1] == BARRIER)
@@ -127,7 +127,7 @@ void move_blank(const Node *current_status, direction dire, Node *target) {
             }
             break;
         case RIGHT:
-            if (x >= 2)
+            if (x >= 2 || lst_move == LEFT)
                 return;
             else {
                 if (p->status[z][y][x+1] == BARRIER)
@@ -138,7 +138,7 @@ void move_blank(const Node *current_status, direction dire, Node *target) {
             }
             break;
         case FORWARD:
-            if (z <= 0)
+            if (z <= 0 || lst_move == BACK)
                 return;
             else {
                 if (p->status[z-1][y][x] == BARRIER)
@@ -149,7 +149,7 @@ void move_blank(const Node *current_status, direction dire, Node *target) {
             }
             break;
         case BACK:
-            if (z >= 2)
+            if (z >= 2 || lst_move == FORWARD)
                 return;
             else {
                 if (p->status[z+1][y][x] == BARRIER)
@@ -214,15 +214,16 @@ void A_star(Node *start, Node *target) {
     start->f = start->g + start->h;
     start->parent = NULL;
     start->movement = NONE;
+    direction lst_move = NONE;
     OPEN.push(start);
     long int step = 0;
     // cout << start->g << start->h << start->f <<endl;
     while (!OPEN.empty()&&step < MAXSTEP) {
         Node *p;
         p = OPEN.top();
-        cout << "visit nodes = " << step++ << endl;
-        cout << "g = " << p->g << " h = " << p->h << " f = " << p->f <<endl;
-        cout << "blank x = " << p->blank.x << " blank y = " << p->blank.y << " blank z = " << p->blank.z <<endl;
+        // cout << "visit nodes = " << step++ << endl;
+        // cout << "g = " << p->g << " h = " << p->h << " f = " << p->f <<endl;
+        // cout << "blank x = " << p->blank.x << " blank y = " << p->blank.y << " blank z = " << p->blank.z <<endl;
         
         OPEN.pop();
         CLOSE.insert(pair<Node, int>(*p, p->f));
@@ -231,8 +232,10 @@ void A_star(Node *start, Node *target) {
             print_path(p);
             return;
         }
+        if (p)
+            lst_move = p->movement;
         for (int i = 0; i < 6; ++i)
-            move_blank(p, (direction)i, target);
+            move_blank(p, (direction)i, target, lst_move);
     }
     cout << "no solution!" << endl;
     return;
