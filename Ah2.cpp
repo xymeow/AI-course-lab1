@@ -5,12 +5,15 @@
 #include <string>
 #include <sstream>
 #include <stack>
+#include <time.h>
 
 using namespace std;
 
 const int BLANK = 0;
 const int BARRIER = -1;
 const long int MAXSTEP = 10000000000;
+
+clock_t start_time, finish_time;
 
 enum direction {
     UP,
@@ -49,7 +52,8 @@ struct cmp {
 
 priority_queue <Node*, vector<Node*>, cmp> OPEN;
 map<Node, int> CLOSE;
-map<int, Point> target_position;
+// map<int, Point> target_position;
+Point target_position[27];
 
 void print_status(Node *current_status) {
     for (int i = 0; i < 3; ++i) {
@@ -71,9 +75,9 @@ int h(Node *current_status, Node *target) {
                 int num = current_status->status[i][j][k];
                 if (num == -1)
                     continue;
-                map<int, Point>::iterator iter;
-                iter = target_position.find(num);
-                Point p = iter->second;
+                // map<int, Point>::iterator iter;
+                // iter = target_position.find(num);
+                Point p = target_position[num];
                 dist += abs(p.x-i) + abs(p.y-j) + abs(p.z-k);
             }
     return dist;
@@ -225,6 +229,7 @@ void A_star(Node *start, Node *target) {
     long int step = 0;
     direction lst_move = NONE;
     // cout << start->g << start->h << start->f <<endl;
+    start_time = clock();
     while (!OPEN.empty()&&step < MAXSTEP) {
         Node *p;
         p = OPEN.top();
@@ -235,8 +240,10 @@ void A_star(Node *start, Node *target) {
         OPEN.pop();
         CLOSE.insert(pair<Node, int>(*p, p->f));
         if (h(p, target) == 0) {
+            finish_time = clock();
             cout << "done!" << endl;
             print_path(p);
+            cout << "time = " << (double)(finish_time - start_time) / 1000 << "ms" <<endl;
             return;
         }
         if (p)
@@ -286,7 +293,11 @@ void creat_position(Node *node){
         for (int j = 0; j < 3; ++j)
             for (int k = 0; k < 3; ++k) {
                 Point p = {i, j, k};
-                target_position.insert(pair<int, Point>(node->status[i][j][k], p));
+                // target_position.insert(pair<int, Point>(node->status[i][j][k], p));
+                int num = node->status[i][j][k];
+                if (num == -1)
+                    continue;
+                target_position[num] = p;
             }
     return;
 }
