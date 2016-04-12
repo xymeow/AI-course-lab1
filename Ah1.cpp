@@ -5,12 +5,14 @@
 #include <string>
 #include <sstream>
 #include <stack>
+#include <time.h>
 
 using namespace std;
 
 const int BLANK = 0;
 const int BARRIER = -1;
 const long int MAXSTEP = 10000000000;
+clock_t start_time, end_time;
 
 enum direction {
     UP,
@@ -62,7 +64,7 @@ void print_status(Node *current_status) {
     }
 }
 
-int h(Node *current_status, Node *target) {
+int h1(Node *current_status, Node *target) {
     int count = 0;
     for (int i = 0; i < 3; ++i) 
         for (int j = 0; j < 3; ++j) 
@@ -161,7 +163,7 @@ void move_blank(const Node *current_status, direction dire, Node *target, direct
             break;
         default: break;
     };
-    p->h = h(p, target);
+    p->h = h1(p, target);
     (p->g)++;
     p->f = p->h + p->g;
     
@@ -210,7 +212,7 @@ void print_path(Node *end){
 
 void A_star(Node *start, Node *target) {
     start->g = 0;
-    start->h = h(start, target);
+    start->h = h1(start, target);
     start->f = start->g + start->h;
     start->parent = NULL;
     start->movement = NONE;
@@ -218,6 +220,7 @@ void A_star(Node *start, Node *target) {
     OPEN.push(start);
     long int step = 0;
     // cout << start->g << start->h << start->f <<endl;
+    start_time = clock();
     while (!OPEN.empty()&&step < MAXSTEP) {
         Node *p;
         p = OPEN.top();
@@ -227,9 +230,11 @@ void A_star(Node *start, Node *target) {
         
         OPEN.pop();
         CLOSE.insert(pair<Node, int>(*p, p->f));
-        if (h(p, target) == 0) {
+        if (h1(p, target) == 0) {
+            end_time = clock();
             cout << "done!" << endl;
             print_path(p);
+            cout << "time = " << double(end_time - start_time)/1000 << "ms"<<endl;
             return;
         }
         if (p)

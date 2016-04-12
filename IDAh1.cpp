@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <stack>
+#include <time.h>
 
 using namespace std;
 
@@ -12,6 +13,7 @@ const int BLANK = 0;
 const int BARRIER = -1;
 const long int MAXSTEP = 10000000000;
 const int LIMIT = 100;
+clock_t start_time, end_time;
 
 enum direction {
     UP,
@@ -64,7 +66,7 @@ void print_status(Node *current_status) {
     }
 }
 
-int h(Node *current_status, Node *target) {
+int h1(Node *current_status, Node *target) {
     int count = 0;
     for (int i = 0; i < 3; ++i) 
         for (int j = 0; j < 3; ++j) 
@@ -163,7 +165,7 @@ void move_blank(const Node *current_status, direction dire, Node *target, direct
             break;
         default: break;
     };
-    p->h = h(p, target);
+    p->h = h1(p, target);
     (p->g)++;
     p->f = p->h + p->g;
     
@@ -215,7 +217,7 @@ void print_path(Node *end){
 
 void IDA(Node *start, Node *target) {
     start->g = 0;
-    start->h = h(start, target);
+    start->h = h1(start, target);
     start->f = start->g + start->h;
     start->parent = NULL;
     start->movement = NONE;
@@ -223,9 +225,10 @@ void IDA(Node *start, Node *target) {
     int limit = start->h;
     // stack<Node*> Stack;
     // int step = 0;
+    start_time = clock();
     while (limit < LIMIT) {
-        // int next_limit = LIMIT;
-        limit ++;
+        int next_limit = LIMIT;
+        // limit ++;
         IDAStack.push(start);
         while (!IDAStack.empty()) {
 
@@ -234,9 +237,11 @@ void IDA(Node *start, Node *target) {
         // cout << "g = " << p->g << " h = " << p->h << " f = " << p->f <<endl;
         // cout << "blank x = " << p->blank.x << " blank y = " << p->blank.y << " blank z = " << p->blank.z <<endl;
             IDAStack.pop();
-            if (h(p, target) == 0) {
+            if (h1(p, target) == 0) {
+                end_time = clock();
                 cout << "done" << endl;
                 print_path(p);
+                cout << "time = " << double(end_time - start_time)/1000 << "ms" <<endl;
                 return;
             }
             else {
@@ -247,8 +252,11 @@ void IDA(Node *start, Node *target) {
                         move_blank(p, (direction)i, target, lst_move);
                     }
                 }
+                else
+                    next_limit = min(p->f, next_limit);
             }
         }
+        limit = next_limit;
     }
     cout << "no solution!" << endl;
     return;
