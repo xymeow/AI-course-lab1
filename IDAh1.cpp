@@ -9,8 +9,8 @@
 
 using namespace std;
 
-const int BLANK = 0;
-const int BARRIER = -1;
+const char BLANK = 2;
+const char BARRIER = 1;
 const long int MAXSTEP = 10000000000;
 const int LIMIT = 100;
 clock_t start_time, end_time;
@@ -32,7 +32,7 @@ typedef struct Point {
 }Point;
 
 typedef struct Node {
-    int status[3][3][3];
+    char status[3][3][3];
     Node *parent;
     int f;
     int g;
@@ -58,7 +58,7 @@ void print_status(Node *current_status) {
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
             for (int k = 0; k < 3; ++k) {
-                cout<<current_status->status[i][j][k]<<' ';
+                cout<<int(current_status->status[i][j][k])-2<<' ';
             }      
             cout<<endl;  
         }
@@ -265,13 +265,18 @@ void IDA(Node *start, Node *target) {
 void read_file2node(string fname, Node * node) {
     ifstream fin(fname);
     string s;
-    int x = 0;
+    int a, b, c;
     int y = 0;
     int z = 0;
     while (getline(fin, s)) {
         if (s != ""&&s != "\r") {
             istringstream ss(s);
-            ss >> node->status[z][y][0] >> node->status[z][y][1] >> node->status[z][y][2];
+            ss >> a>>b>>c;
+            a +=2;b+=2;c+=2;
+//            ss >> node->status[z][y][0] >> node->status[z][y][1] >> node->status[z][y][2];
+            node->status[z][y][0] = a;
+            node->status[z][y][1] = b;
+            node->status[z][y][2] = c;
             y ++;
         }
         else {
@@ -287,7 +292,7 @@ void find_blank(Node *node){
     for (int i = 0; i < 3; ++i)
         for (int j = 0; j < 3; ++j)
             for (int k = 0; k < 3; ++k)
-                if (node->status[i][j][k] == 0) {
+                if (node->status[i][j][k] == 2) {
                     node->blank.x = k;
                     node->blank.y = j;
                     node->blank.z = i;

@@ -12,6 +12,7 @@ using namespace std;
 const int BLANK = 0;
 const int BARRIER = -1;
 const long int MAXSTEP = 10000000000;
+const int MAXLEN = 200;
 
 clock_t start_time, finish_time;
 
@@ -34,6 +35,7 @@ typedef struct Point {
 typedef struct Node {
     int status[3][3][3];
     Node *parent;
+    Node *next;
     int f;
     int g;
     int h;
@@ -50,10 +52,35 @@ struct cmp {
     }
 };
 
-priority_queue <Node*, vector<Node*>, cmp> OPEN;
+// priority_queue <Node*, vector<Node*>, cmp> OPEN;
+Node OPEN[MAXLEN+1];
 map<Node, int> CLOSE;
 // map<int, Point> target_position;
 Point target_position[27];
+int currentf = 0;
+
+void insert (Node *node) {
+    Node *tmp = &OPEN[node->f];
+    node->next = tmp->next;
+    tmp->next = node;
+    if (node->f < currentf)
+        currentf = node->f;
+}
+
+Node *top() {
+    while  (OPEN[currentf].next == NULL && currentf < MAXLEN)
+        currentf ++;
+    return OPEN[currentf].next;
+}
+
+void pop() {
+    Node *p = OPEN[currentf].next;
+    if (p)
+        OPEN[currentf].next = p->next;
+        p = NULL;
+        // free(p);
+    return;
+}
 
 void print_status(Node *current_status) {
     for (int i = 0; i < 3; ++i) {
@@ -73,7 +100,7 @@ int h2(Node *current_status, Node *target) {
         for (int j = 0; j < 3; ++j) 
             for (int k = 0; k < 3; ++k) {
                 int num = current_status->status[i][j][k];
-                if (num == -1)
+                if (num == BARRIER)
                     continue;
                 // map<int, Point>::iterator iter;
                 // iter = target_position.find(num);
@@ -105,6 +132,7 @@ void move_blank(const Node *current_status, direction dire, Node *target, direct
     p->movement = dire;
     int h = current_status->h;
     Point tp, tb;
+    p->next = NULL;
     // int dist;
     switch (dire){
         case DOWN: 
@@ -229,7 +257,8 @@ void move_blank(const Node *current_status, direction dire, Node *target, direct
     
     if (CLOSE.find(*p) == CLOSE.end()) {
         p->parent = (Node*)current_status;
-        OPEN.push(p);
+        // OPEN.push(p);
+        insert(p);
     }
     return;
 }
@@ -276,19 +305,22 @@ void A_star(Node *start, Node *target) {
     start->f = start->g + start->h;
     start->parent = NULL;
     start->movement = NONE;
-    OPEN.push(start);
+    start->next = NULL;
+    currentf = start->f;
+    // OPEN.push(start);
+    insert(start);
     long int step = 0;
     direction lst_move = NONE;
     // cout << start->g << start->h << start->f <<endl;
     start_time = clock();
-    while (!OPEN.empty()&&step < MAXSTEP) {
+    while (top()&&step < MAXSTEP) {
         Node *p;
-        p = OPEN.top();
+        p = top();
         // cout << "visit nodes = " << step++ << endl;
         // cout << "g = " << p->g << " h = " << p->h << " f = " << p->f <<endl;
         // cout << "blank x = " << p->blank.x << " blank y = " << p->blank.y << " blank z = " << p->blank.z <<endl;
-        
-        OPEN.pop();
+        pop();
+        // OPEN.pop();
         CLOSE.insert(pair<Node, int>(*p, p->f));
         if (h2(p, target) == 0) {
             finish_time = clock();
@@ -346,7 +378,7 @@ void creat_position(Node *node){
                 Point p = {k, j, i};
                 // target_position.insert(pair<int, Point>(node->status[i][j][k], p));
                 int num = node->status[i][j][k];
-                if (num == -1)
+                if (num == BARRIER)
                     continue;
                 target_position[num] = p;
             }
