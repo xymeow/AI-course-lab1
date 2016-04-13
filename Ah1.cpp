@@ -51,7 +51,7 @@ Node OPEN[MAXLEN+1];
 map<char*, int> CLOSE;
 //unordered_map<char*, int> CLOSE;
 
-int visited = 0;
+long int visited = 0;
 
 int currentf = 0;
 

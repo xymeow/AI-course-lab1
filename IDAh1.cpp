@@ -13,6 +13,8 @@ const char BLANK = 2;
 const char BARRIER = 1;
 const long int MAXSTEP = 10000000000;
 const int LIMIT = 100;
+const long int MAXVISIT0 = 100000;
+long int visited = 0;
 clock_t start_time, end_time;
 
 enum direction {
@@ -32,7 +34,7 @@ typedef struct Point {
 }Point;
 
 typedef struct Node {
-    char status[3][3][3];
+    char status[28];
     Node *parent;
     int f;
     int g;
@@ -50,6 +52,10 @@ struct cmp {
     }
 };
 
+int position(int x, int y, int z) {
+    return x + y*3 + 9*z;
+}
+
 // priority_queue <Node*, vector<Node*>, cmp> OPEN;
 // map<Node, int> CLOSE;
 stack<Node*> IDAStack;
@@ -58,9 +64,9 @@ void print_status(Node *current_status) {
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
             for (int k = 0; k < 3; ++k) {
-                cout<<int(current_status->status[i][j][k])-2<<' ';
-            }      
-            cout<<endl;  
+                cout<<int(current_status->status[position(k, j, i)])-2<<' ';
+            }
+            cout<<endl;
         }
         cout<<endl;
     }
@@ -68,24 +74,21 @@ void print_status(Node *current_status) {
 
 int h1(Node *current_status, Node *target) {
     int count = 0;
-    for (int i = 0; i < 3; ++i) 
-        for (int j = 0; j < 3; ++j) 
-            for (int k = 0; k < 3; ++k) 
-                if (current_status->status[i][j][k] != target->status[i][j][k])
-                    count++;
+    for (int i = 0; i < 27; i++)
+        if (current_status->status[i] != target->status[i])
+            count ++;
     return count;
 }
 
 void copy_status(const Node *from, Node *to){
-    for (int i = 0; i < 3; ++i)
-        for (int j = 0; j < 3; ++j)
-            for (int k = 0; k < 3; ++k)
-                to->status[i][j][k] = from->status[i][j][k];
+    strcpy(to->status, from->status);
+    return;
 }
 
-void move_blank(const Node *current_status, direction dire, Node *target, direction lst_move) {
-    Node *p;
-    p = new Node();
+void move_blank(const Node *current_status, direction dire, Node *target, direction lst_move, Node VISIT[]) {
+    Node *p = &VISIT[visited];
+    //    p = new Node();
+    visited ++;
 
     int x = current_status->blank.x;
     int y = current_status->blank.y;
@@ -98,68 +101,56 @@ void move_blank(const Node *current_status, direction dire, Node *target, direct
     p->movement = dire;
     switch (dire){
         case DOWN:
-            if (y >= 2 || lst_move == UP)
+            if (y >= 2 || lst_move == UP || p->status[position(x, y+1, z)] == BARRIER)
                 return;
             else {
-                if (p->status[z][y+1][x] == BARRIER)
-                    return;
-                p->status[z][y][x] = p->status[z][y+1][x];
-                p->status[z][y+1][x] = BLANK;
+                p->status[position(x, y, z)] = p->status[position(x, y+1, z)];
+                p->status[position(x, y+1, z)] = BLANK;
                 p->blank.y = y+1;
             }
             break;
         case UP:
-            if (y <= 0 || lst_move == DOWN)
+            if (y <= 0 || lst_move == DOWN || p->status[position(x, y-1, z)] == BARRIER)
                 return;
             else {
-                if (p->status[z][y-1][x] == BARRIER)
-                    return;
-                p->status[z][y][x] = p->status[z][y-1][x];
-                p->status[z][y-1][x] = BLANK;
+                p->status[position(x, y, z)] = p->status[position(x, y-1, z)];
+                p->status[position(x, y-1, z)] = BLANK;
                 p->blank.y = y-1;
             }
             break;
         case LEFT:
-            if (x <= 0 || lst_move == RIGHT)
+            if (x <= 0 || lst_move == RIGHT || p->status[position(x-1, y, z)] == BARRIER)
                 return;
             else {
-                if (p->status[z][y][x-1] == BARRIER)
-                    return;
-                p->status[z][y][x] = p->status[z][y][x-1];
-                p->status[z][y][x-1] = BLANK;
+                p->status[position(x, y, z)] = p->status[position(x-1, y, z)];
+                p->status[position(x-1, y, z)] = BLANK;
                 p->blank.x = x-1;
             }
             break;
         case RIGHT:
-            if (x >= 2 || lst_move == LEFT)
+            if (x >= 2 || lst_move == LEFT || p->status[position(x+1, y, z)] == BARRIER)
                 return;
             else {
-                if (p->status[z][y][x+1] == BARRIER)
-                    return;
-                p->status[z][y][x] = p->status[z][y][x+1];
-                p->status[z][y][x+1] = BLANK;
+                p->status[position(x, y, z)] = p->status[position(x+1, y, z)];
+                p->status[position(x+1, y, z)] = BLANK;
                 p->blank.x = x+1;
             }
             break;
         case FORWARD:
-            if (z <= 0 || lst_move == BACK)
+            if (z <= 0 || lst_move == BACK || p->status[position(x, y, z-1)] == BARRIER)
                 return;
             else {
-                if (p->status[z-1][y][x] == BARRIER)
-                    return;
-                p->status[z][y][x] = p->status[z-1][y][x];
-                p->status[z-1][y][x] = BLANK;
+                p->status[position(x, y, z)] = p->status[position(x, y, z-1)];
+                p->status[position(x, y, z-1)] = BLANK;
                 p->blank.z = z-1;
             }
             break;
         case BACK:
-            if (z >= 2 || lst_move == FORWARD)
+            if (z >= 2 || lst_move == FORWARD || p->status[position(x, y, z+1)] == BARRIER)
                 return;
             else {
-                if (p->status[z+1][y][x] == BARRIER)
-                    return;
-                p->status[z][y][x] = p->status[z+1][y][x];
-                p->status[z+1][y][x] = BLANK;
+                p->status[position(x, y, z)] = p->status[position(x, y, z+1)];
+                p->status[position(x, y, z+1)] = BLANK;
                 p->blank.z = z+1;
             }
             break;
@@ -225,6 +216,9 @@ void IDA(Node *start, Node *target) {
     int limit = start->h;
     // stack<Node*> Stack;
     // int step = 0;
+    Node *VISIT = new Node[MAXVISIT0];
+    int MAXVISIT;
+    MAXVISIT = MAXVISIT0;
     start_time = clock();
     while (limit < LIMIT) {
         int next_limit = LIMIT;
@@ -249,7 +243,12 @@ void IDA(Node *start, Node *target) {
                     if (p)
                         lst_move = p->movement;
                     for (int i = 0; i < 6; i++) {
-                        move_blank(p, (direction)i, target, lst_move);
+                        if (visited >= MAXVISIT) {
+            //                delete [] VISIT;
+                            MAXVISIT *= 2;
+                            VISIT = new Node[MAXVISIT];
+                        }
+                        move_blank(p, (direction)i, target, lst_move, VISIT);
                     }
                 }
                 else
@@ -273,10 +272,9 @@ void read_file2node(string fname, Node * node) {
             istringstream ss(s);
             ss >> a>>b>>c;
             a +=2;b+=2;c+=2;
-//            ss >> node->status[z][y][0] >> node->status[z][y][1] >> node->status[z][y][2];
-            node->status[z][y][0] = a;
-            node->status[z][y][1] = b;
-            node->status[z][y][2] = c;
+            node->status[position(0, y, z)] = a;
+            node->status[position(1, y, z)] = b;
+            node->status[position(2, y, z)] = c;
             y ++;
         }
         else {
@@ -292,7 +290,7 @@ void find_blank(Node *node){
     for (int i = 0; i < 3; ++i)
         for (int j = 0; j < 3; ++j)
             for (int k = 0; k < 3; ++k)
-                if (node->status[i][j][k] == 2) {
+                if (node->status[position(k, j, i)] == 2) {
                     node->blank.x = k;
                     node->blank.y = j;
                     node->blank.z = i;
@@ -317,5 +315,3 @@ int main(int argc, char const *argv[]) {
     delete begin;
     return 0;
 }
-
-
