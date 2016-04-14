@@ -55,7 +55,7 @@ long int visited = 0;
 
 int currentf = 0;
 
-int position(int x, int y, int z) {
+inline int position(int x, int y, int z) {
     return x + y*3 + 9*z;
 }
 

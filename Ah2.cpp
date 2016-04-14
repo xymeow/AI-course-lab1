@@ -9,12 +9,13 @@
 
 using namespace std;
 
-const int BLANK = 0;
-const int BARRIER = -1;
+const char BLANK = 2;
+const char BARRIER = 1;
 const long int MAXSTEP = 10000000000;
 const int MAXLEN = 200;
-
 clock_t start_time, finish_time;
+const long int MAXVISIT0 = 100000;
+long int visited = 0;
 
 enum direction {
     UP,
@@ -33,7 +34,8 @@ typedef struct Point {
 }Point;
 
 typedef struct Node {
-    int status[3][3][3];
+    // int status[3][3][3];
+    char status[28];
     Node *parent;
     Node *next;
     int f;
@@ -51,6 +53,10 @@ struct cmp {
         return n1->f >= n2->f;
     }
 };
+
+inline int position(int x, int y, int z) {
+    return x + y*3 + 9*z;
+}
 
 // priority_queue <Node*, vector<Node*>, cmp> OPEN;
 Node OPEN[MAXLEN+1];
@@ -86,9 +92,9 @@ void print_status(Node *current_status) {
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
             for (int k = 0; k < 3; ++k) {
-                cout<<current_status->status[i][j][k]<<' ';
-            }      
-            cout<<endl;  
+                cout<<int(current_status->status[position(k, j, i)])-2<<' ';
+            }
+            cout<<endl;
         }
         cout<<endl;
     }
@@ -99,27 +105,26 @@ int h2(Node *current_status, Node *target) {
     for (int i = 0; i < 3; ++i) 
         for (int j = 0; j < 3; ++j) 
             for (int k = 0; k < 3; ++k) {
-                int num = current_status->status[i][j][k];
+                char num = current_status->status[position(k, j, i)];
                 if (num == BARRIER)
                     continue;
                 // map<int, Point>::iterator iter;
                 // iter = target_position.find(num);
-                Point p = target_position[num];
+                Point p = target_position[int(num)];
                 dist += abs(p.x-k) + abs(p.y-j) + abs(p.z-i);
             }
     return dist;
 }
 
 void copy_status(const Node *from, Node *to){
-    for (int i = 0; i < 3; ++i)
-        for (int j = 0; j < 3; ++j)
-            for (int k = 0; k < 3; ++k)
-                to->status[i][j][k] = from->status[i][j][k];
+    strcpy(to->status, from->status);
+    return;
 }
 
-void move_blank(const Node *current_status, direction dire, Node *target, direction lst_move) {
-    Node *p;
-    p = new Node();
+void move_blank(const Node *current_status, direction dire, Node *target, direction lst_move, Node VISIT[]) {
+    Node *p = &VISIT[visited];
+    //    p = new Node();
+    visited ++;
 
     int x = current_status->blank.x;
     int y = current_status->blank.y;
@@ -136,13 +141,13 @@ void move_blank(const Node *current_status, direction dire, Node *target, direct
     // int dist;
     switch (dire){
         case DOWN: 
-            if (y >= 2 || lst_move == UP||p->status[z][y+1][x] == BARRIER)
+            if (y >= 2 || lst_move == UP||p->status[position(x, y+1, z)] == BARRIER)
                 return;
             else {
-                p->status[z][y][x] = p->status[z][y+1][x];
-                p->status[z][y+1][x] = BLANK;
+                p->status[position(x, y, z)] = p->status[position(x, y+1, z)];
+                p->status[position(x, y+1, z)] = BLANK;
                 p->blank.y = y+1; 
-                tp = target_position[p->status[z][y][x]];
+                tp = target_position[p->status[position(x, y, z)]];
                 tb = target_position[0];
                 if (y+1 <=tp.y) 
                     h ++;
@@ -155,13 +160,13 @@ void move_blank(const Node *current_status, direction dire, Node *target, direct
             }
             break;
         case UP:
-            if (y <= 0 || lst_move == DOWN || p->status[z][y-1][x] == BARRIER)
+            if (y <= 0 || lst_move == DOWN || p->status[position(x, y-1, z)] == BARRIER)
                 return;
             else {
-                p->status[z][y][x] = p->status[z][y-1][x];
-                p->status[z][y-1][x] = BLANK;
+                p->status[position(x, y, z)] = p->status[position(x, y-1, z)];
+                p->status[position(x, y-1, z)] = BLANK;
                 p->blank.y = y-1;
-                tp = target_position[p->status[z][y][x]];
+                tp = target_position[p->status[position(x, y, z)]];
                 tb = target_position[0];
                 if (y-1 >=tp.y) 
                     h ++;
@@ -174,13 +179,13 @@ void move_blank(const Node *current_status, direction dire, Node *target, direct
             }
             break;
         case LEFT:
-            if (x <= 0 || lst_move == RIGHT || p->status[z][y][x-1] == BARRIER)
+            if (x <= 0 || lst_move == RIGHT || p->status[position(x-1, y, z)] == BARRIER)
                 return;
             else {
-                p->status[z][y][x] = p->status[z][y][x-1];
-                p->status[z][y][x-1] = BLANK;
+                p->status[position(x, y, z)] = p->status[position(x-1, y, z)];
+                p->status[position(x-1, y, z)] = BLANK;
                 p->blank.x = x-1;
-                tp = target_position[p->status[z][y][x]];
+                tp = target_position[p->status[position(x, y, z)]];
                 tb = target_position[0];
                 if (x-1 >=tp.x) 
                     h ++;
@@ -193,13 +198,13 @@ void move_blank(const Node *current_status, direction dire, Node *target, direct
             }
             break;
         case RIGHT:
-            if (x >= 2 || lst_move == LEFT || p->status[z][y][x+1] == BARRIER)
+            if (x >= 2 || lst_move == LEFT || p->status[position(x+1, y, z)] == BARRIER)
                 return;
             else {
-                p->status[z][y][x] = p->status[z][y][x+1];
-                p->status[z][y][x+1] = BLANK;
+                p->status[position(x, y, z)] = p->status[position(x+1, y, z)];
+                p->status[position(x+1, y, z)] = BLANK;
                 p->blank.x = x+1;
-                tp = target_position[p->status[z][y][x]];
+                tp = target_position[p->status[position(x, y, z)]];
                 tb = target_position[0];
                 if (x+1 <=tp.x) 
                     h ++;
@@ -212,13 +217,13 @@ void move_blank(const Node *current_status, direction dire, Node *target, direct
             }
             break;
         case FORWARD:
-            if (z <= 0 || lst_move == BACK || p->status[z-1][y][x] == BARRIER)
+            if (z <= 0 || lst_move == BACK || p->status[position(x, y, z-1)] == BARRIER)
                 return;
             else {
-                p->status[z][y][x] = p->status[z-1][y][x];
-                p->status[z-1][y][x] = BLANK;
+                p->status[position(x, y, z)] = p->status[position(x, y, z-1)];
+                p->status[position(x, y, z-1)] = BLANK;
                 p->blank.z = z-1;
-                tp = target_position[p->status[z][y][x]];
+                tp = target_position[p->status[position(x, y, z)]];
                 tb = target_position[0];
                 if (z-1 >=tp.z) 
                     h ++;
@@ -231,13 +236,13 @@ void move_blank(const Node *current_status, direction dire, Node *target, direct
             }
             break;
         case BACK:
-            if (z >= 2 || lst_move == FORWARD || p->status[z+1][y][x] == BARRIER)
+            if (z >= 2 || lst_move == FORWARD || p->status[position(x, y, z+1)] == BARRIER)
                 return;
             else {
-                p->status[z][y][x] = p->status[z+1][y][x];
-                p->status[z+1][y][x] = BLANK;
+                p->status[position(x, y, z)] = p->status[position(x, y, z+1)];
+                p->status[position(x, y, z+1)] = BLANK;
                 p->blank.z = z+1;
-                tp = target_position[p->status[z][y][x]];
+                tp = target_position[p->status[position(x, y, z)]];
                 tb = target_position[0];
                 if (z+1 <=tp.z) 
                     h ++;
@@ -308,6 +313,10 @@ void A_star(Node *start, Node *target) {
     start->next = NULL;
     currentf = start->f;
     // OPEN.push(start);
+    visited = 0;
+    Node *VISIT = new Node[MAXVISIT0];
+    int MAXVISIT;
+    MAXVISIT = MAXVISIT0;
     insert(start);
     long int step = 0;
     direction lst_move = NONE;
@@ -331,8 +340,14 @@ void A_star(Node *start, Node *target) {
         }
         if (p)
             lst_move = p->movement;
-        for (int i = 0; i < 6; ++i)
-            move_blank(p, (direction)i, target, lst_move);
+        for (int i = 0; i < 6; ++i){
+            if (visited >= MAXVISIT) {
+               // delete [] VISIT;
+                MAXVISIT *= 2;
+                VISIT = new Node[MAXVISIT];
+            }
+            move_blank(p, (direction)i, target, lst_move, VISIT);
+        }
     }
     cout << "no solution!" << endl;
     return;
@@ -341,13 +356,17 @@ void A_star(Node *start, Node *target) {
 void read_file2node(string fname, Node * node) {
     ifstream fin(fname);
     string s;
-    int x = 0;
+    int a, b, c;
     int y = 0;
     int z = 0;
     while (getline(fin, s)) {
         if (s != ""&&s != "\r") {
             istringstream ss(s);
-            ss >> node->status[z][y][0] >> node->status[z][y][1] >> node->status[z][y][2];
+            ss >> a>>b>>c;
+            a +=2;b+=2;c+=2;
+            node->status[position(0, y, z)] = a;
+            node->status[position(1, y, z)] = b;
+            node->status[position(2, y, z)] = c;
             y ++;
         }
         else {
@@ -363,7 +382,7 @@ void find_blank(Node *node){
     for (int i = 0; i < 3; ++i)
         for (int j = 0; j < 3; ++j)
             for (int k = 0; k < 3; ++k)
-                if (node->status[i][j][k] == 0) {
+                if (node->status[position(k, j, i)] == BLANK) {
                     node->blank.x = k;
                     node->blank.y = j;
                     node->blank.z = i;
@@ -377,10 +396,11 @@ void creat_position(Node *node){
             for (int k = 0; k < 3; ++k) {
                 Point p = {k, j, i};
                 // target_position.insert(pair<int, Point>(node->status[i][j][k], p));
-                int num = node->status[i][j][k];
+                char num = node->status[position(k, j, i)];
                 if (num == BARRIER)
                     continue;
-                target_position[num] = p;
+                target_position[(int)num] = p;
+
             }
     return;
 }
