@@ -18,10 +18,11 @@ long int visited = 0;
 clock_t start_time, end_time;
 
 enum direction {
-    UP,
-    DOWN,
     LEFT,
     RIGHT,
+    UP,
+    DOWN,
+    
     FORWARD,
     BACK,
     NONE
@@ -32,6 +33,7 @@ typedef struct Point {
     int y;
     int z;
 }Point;
+Point target_position[27];
 
 typedef struct Node {
     char status[28];
@@ -41,23 +43,12 @@ typedef struct Node {
     int h;
     Point blank;
     direction movement;
-    friend bool operator < (const Node a, const Node b) {
-        return a.f >= b.f;
-    }
 }Node, *pNode;
-
-struct cmp {
-    bool operator()(const pNode &n1, const pNode &n2) const {
-        return n1->f >= n2->f;
-    }
-};
 
 inline int position(int x, int y, int z) {
     return x + y*3 + 9*z;
 }
 
-// priority_queue <Node*, vector<Node*>, cmp> OPEN;
-// map<Node, int> CLOSE;
 stack<Node> IDAStack;
 direction movelist[100];
 void print_status(Node *current_status) {
@@ -72,12 +63,20 @@ void print_status(Node *current_status) {
     }
 }
 
-int h1(Node *current_status, Node *target) {
-    int count = 0;
-    for (int i = 0; i < 27; i++)
-        if (current_status->status[i] != target->status[i])
-            count ++;
-    return count;
+int h2(Node *current_status, Node *target) {
+    int dist = 0;
+    for (int i = 0; i < 3; ++i) 
+        for (int j = 0; j < 3; ++j) 
+            for (int k = 0; k < 3; ++k) {
+                char num = current_status->status[position(k, j, i)];
+                if (num == BARRIER||num == BLANK)
+                    continue;
+                else {
+                    Point p = target_position[int(num)];
+                    dist += abs(p.x-k) + abs(p.y-j) + abs(p.z-i);
+                }
+            }
+    return dist;
 }
 
 void copy_status(const Node *from, Node *to){
@@ -86,9 +85,6 @@ void copy_status(const Node *from, Node *to){
 }
 
 void move_blank(const Node current_status, direction dire, Node *target, direction lst_move) {
-    // Node *p = &VISIT[visited];
-    //    p = new Node();
-    // visited ++;
     Node p;
 
     int x = current_status.blank.x;
@@ -100,14 +96,23 @@ void move_blank(const Node current_status, direction dire, Node *target, directi
     copy_status(&current_status, &p);
     p.g = current_status.g;
     p.movement = dire;
+    int h = current_status.h;
+    Point tp, tb;
+
     switch (dire){
-        case DOWN:
-            if (y >= 2 || lst_move == UP || p.status[position(x, y+1, z)] == BARRIER)
+        case DOWN: 
+            if (y >= 2 || lst_move == UP||p.status[position(x, y+1, z)] == BARRIER)
                 return;
             else {
                 p.status[position(x, y, z)] = p.status[position(x, y+1, z)];
                 p.status[position(x, y+1, z)] = BLANK;
-                p.blank.y = y+1;
+                p.blank.y = y+1; 
+                tp = target_position[p.status[position(x, y, z)]];
+                tb = target_position[0];
+                if (y+1 <=tp.y) 
+                    h ++;
+                else
+                    h --;
             }
             break;
         case UP:
@@ -117,6 +122,16 @@ void move_blank(const Node current_status, direction dire, Node *target, directi
                 p.status[position(x, y, z)] = p.status[position(x, y-1, z)];
                 p.status[position(x, y-1, z)] = BLANK;
                 p.blank.y = y-1;
+                tp = target_position[p.status[position(x, y, z)]];
+                tb = target_position[0];
+                if (y-1 >=tp.y) 
+                    h ++;
+                else
+                    h --;
+                // if (y <= tb.y)
+                //     h ++;
+                // else
+                //     h --;
             }
             break;
         case LEFT:
@@ -126,6 +141,16 @@ void move_blank(const Node current_status, direction dire, Node *target, directi
                 p.status[position(x, y, z)] = p.status[position(x-1, y, z)];
                 p.status[position(x-1, y, z)] = BLANK;
                 p.blank.x = x-1;
+                tp = target_position[p.status[position(x, y, z)]];
+                tb = target_position[0];
+                if (x-1 >=tp.x) 
+                    h ++;
+                else
+                    h --;
+                // if (x <= tb.x)
+                //     h ++;
+                // else
+                //     h --;
             }
             break;
         case RIGHT:
@@ -135,6 +160,16 @@ void move_blank(const Node current_status, direction dire, Node *target, directi
                 p.status[position(x, y, z)] = p.status[position(x+1, y, z)];
                 p.status[position(x+1, y, z)] = BLANK;
                 p.blank.x = x+1;
+                tp = target_position[p.status[position(x, y, z)]];
+                tb = target_position[0];
+                if (x+1 <=tp.x) 
+                    h ++;
+                else
+                    h --;
+                // if (x >= tb.x)
+                //     h ++;
+                // else
+                //     h --;
             }
             break;
         case FORWARD:
@@ -144,6 +179,16 @@ void move_blank(const Node current_status, direction dire, Node *target, directi
                 p.status[position(x, y, z)] = p.status[position(x, y, z-1)];
                 p.status[position(x, y, z-1)] = BLANK;
                 p.blank.z = z-1;
+                tp = target_position[p.status[position(x, y, z)]];
+                tb = target_position[0];
+                if (z-1 >=tp.z) 
+                    h ++;
+                else
+                    h --;
+                // if (z <= tb.z)
+                //     h ++;
+                // else
+                //     h --;
             }
             break;
         case BACK:
@@ -153,12 +198,23 @@ void move_blank(const Node current_status, direction dire, Node *target, directi
                 p.status[position(x, y, z)] = p.status[position(x, y, z+1)];
                 p.status[position(x, y, z+1)] = BLANK;
                 p.blank.z = z+1;
+                tp = target_position[p.status[position(x, y, z)]];
+                tb = target_position[0];
+                if (z+1 <=tp.z) 
+                    h ++;
+                else
+                    h --;
+                // if (z >= tb.z)
+                //     h ++;
+                // else
+                //     h --;
             }
             break;
         default: break;
     };
-    p.h = h1(&p, target);
     (p.g)++;
+    p.h = h;
+    // cout << "h = "<<h<<" h2 = "<<p->h<<endl;
     p.f = p.h + p.g;
     
     // if (CLOSE.find(*p) == CLOSE.end()) {
@@ -185,7 +241,7 @@ void print_movement (direction dire) {
 
 void print_path(Node *end){
     int step = end->g;
-    cout << "step = " << step << endl;
+    // cout << "step = " << step << endl;
     for (int i = 1; i<=step; i++)
         print_movement(movelist[i]);
     cout<<endl;
@@ -195,7 +251,7 @@ void print_path(Node *end){
 
 void IDA(Node *start, Node *target) {
     start->g = 0;
-    start->h = h1(start, target);
+    start->h = h2(start, target);
     start->f = start->g + start->h;
     // start->parent = NULL;
     start->movement = NONE;
@@ -206,11 +262,13 @@ void IDA(Node *start, Node *target) {
     // Node *VISIT = new Node[MAXVISIT0];
     // int MAXVISIT;
     // MAXVISIT = MAXVISIT0;
+    
     start_time = clock();
     while (limit < LIMIT) {
         int next_limit = LIMIT;
-        // limit ++;
         IDAStack.push(*start);
+        // cout << start->g << start->h << start->f <<endl;
+        lst_move = NONE;
         while (!IDAStack.empty()) {
 
             Node p = IDAStack.top();
@@ -218,33 +276,32 @@ void IDA(Node *start, Node *target) {
         // cout << "g = " << p.g << " h = " << p.h << " f = " << p.f <<endl;
         // cout << "blank x = " << p.blank.x << " blank y = " << p.blank.y << " blank z = " << p.blank.z <<endl;
             IDAStack.pop();
-            if (p.h == 0) {
-                movelist[p.g] = p.movement;
-                end_time = clock();
-                cout << "done" << endl;
-                print_path(&p);
-                cout << "time = " << double(end_time - start_time)/1000 << "ms" <<endl;
-                return;
+            // cout<<limit<<endl;  
+            if (limit < p.f) {
+                next_limit = min(p.f, next_limit);
             }
             else {
-                if (limit >= p.f) {
-                    if (p.movement!=NONE)
-                        lst_move = p.movement;
-                    for (int i = 0; i < 6; i++) {
-            //             if (visited >= MAXVISIT) {
-            // //                delete [] VISIT;
-            //                 MAXVISIT *= 2;
-            //                 VISIT = new Node[MAXVISIT];
-            //             }
-                        move_blank(p, (direction)i, target, lst_move);
+                    if (p.h == 0) {
+                        movelist[p.g] = p.movement;
+                        end_time = clock();
+                        // cout << "done" << endl;
+                        
+                        cout <<  double(end_time - start_time)/1000  <<endl;
+                        print_path(&p);
+                        return;
+                    }
+                    else {
+                        if (p.movement!=NONE)
+                            lst_move = p.movement;
+                        for (int i = 0; i < 6; i++) {
+                            move_blank(p, (direction)i, target, lst_move);
+                        }
                     }
                 }
-                else
-                    next_limit = min(p.f, next_limit);
-            }
             movelist[p.g] = lst_move;
         }
         limit = next_limit;
+        // cout<<"limit = "<<limit<<endl;
     }
     cout << "no solution!" << endl;
     return;
@@ -271,7 +328,7 @@ void read_file2node(string fname, Node * node) {
             z ++;
         }
     }
-    print_status(node);
+    // print_status(node);
     return;
 }
 
@@ -287,19 +344,48 @@ void find_blank(Node *node){
     return;
 }
 
+void create_position(Node *node){
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j)
+            for (int k = 0; k < 3; ++k) {
+                Point p = {k, j, i};
+                // target_position.insert(pair<int, Point>(node->status[i][j][k], p));
+                char num = node->status[position(k, j, i)];
+                if (num == BARRIER)
+                    continue;
+                target_position[(int)num] = p;
+
+            }
+    return;
+}
+
+bool check_barrier(Node* begin, Node* target) {
+    for (int i = 0; i < 27; i ++) {
+        if (begin->status[i]==BARRIER&&target->status[i]!=BARRIER)
+            return false;
+    }
+    return true;
+}
+
 int main(int argc, char const *argv[]) {
     Node *target, *begin;
     target = new Node();
     begin = new Node();
     string fname = "source.txt";
-    cout << "source: " << endl;
+    // cout << "source: " << endl;
     read_file2node(fname, begin);
     find_blank(begin);
     fname = "target.txt";
-    cout << "target: " << endl;
+    // cout << "target: " << endl;
     read_file2node(fname, target);
     find_blank(target);
-    IDA(begin, target);  
+    create_position(target);
+    freopen("output_IDAh2.txt", "w", stdout);
+    if (check_barrier(begin, target))
+        IDA(begin, target);  
+    else
+        cout<<"barrier error!"<<endl;
+    fclose(stdout);
     delete target;
     delete begin;
     return 0;
